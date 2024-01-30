@@ -15,7 +15,9 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "ipykernel", # Support for Jupyter notebooks
+    # We use internal pd._libs.missing and experimental ArrowExtensionArray
+    "pandas>=2.2,<2.3",
+    "pyarrow>=15",
 ]
 
 [project.urls]
@@ -38,6 +40,7 @@ dev = [
     "nbconvert", # Needed for pre-commit check to clear output from Python notebooks
     "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
     "ipython", # Also used in building notebooks into Sphinx
+    "ipykernel", # Support for Jupyter notebooks
     "asv==0.6.1", # Used to compute performance benchmarks
 ]
 
