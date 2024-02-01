@@ -64,7 +64,7 @@ def pack_df_into_structs(df: pd.DataFrame) -> pd.Series:
     """
 
     # TODO: think about the case when the data is pre-sorted and we don't need a data copy.
-    flat = df.sort_index()
+    flat = df.sort_index(kind="stable")
     return pack_sorted_df_into_struct(flat)
 
 
