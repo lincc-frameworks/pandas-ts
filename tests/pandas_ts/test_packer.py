@@ -1,15 +1,10 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from conftest import assert_nested_array_series_equal
 from numpy.testing import assert_array_equal
 
 from pandas_ts import packer
-
-
-def assert_nested_array_series_equal(a, b):
-    assert_array_equal(a.index, b.index)
-    for inner_a, inner_b in zip(a, b):
-        assert_array_equal(inner_a, inner_b, err_msg=f"Series '{a.name}' is not equal series '{b.name}'")
 
 
 def test_pack_df():
