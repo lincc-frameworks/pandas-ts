@@ -1,5 +1,7 @@
 # pandas-ts
 
+### WIP exploratory repository for nested array representation of time series data
+
 [![Template](https://img.shields.io/badge/Template-LINCC%20Frameworks%20Python%20Project%20Template-brightgreen)](https://lincc-ppt.readthedocs.io/en/latest/)
 
 [![PyPI](https://img.shields.io/pypi/v/pandas-ts?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/pandas-ts/)
