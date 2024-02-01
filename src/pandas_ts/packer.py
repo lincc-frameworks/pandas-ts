@@ -4,6 +4,9 @@ TODO: mask support
 TODO: multi-index support
 """
 
+# "|" for python 3.9
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import pyarrow as pa
