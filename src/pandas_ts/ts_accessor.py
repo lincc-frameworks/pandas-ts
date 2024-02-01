@@ -5,13 +5,9 @@ import pandas as pd
 import pyarrow as pa
 from pandas.api.extensions import register_series_accessor
 
+from pandas_ts.utils import is_pa_type_a_list
+
 __all__ = ["TsAccessor"]
-
-
-def pa_type_is_any_list(pa_type):
-    return (
-        pa.types.is_list(pa_type) or pa.types.is_large_list(pa_type) or pa.types.is_fixed_size_list(pa_type)
-    )
 
 
 @register_series_accessor("ts")
@@ -36,7 +32,7 @@ class TsAccessor:
             raise AttributeError("Can only use .ts accessor with a Series with dtype pyarrow struct dtype")
 
         for field in pyarrow_dtype:
-            if not pa_type_is_any_list(field.type):
+            if not is_pa_type_a_list(field.type):
                 raise AttributeError(
                     f"Can only use .ts accessor with a Series with dtype pyarrow struct dtype, all fields must be list types. Given struct has unsupported field {field}"
                 )
