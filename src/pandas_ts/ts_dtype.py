@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Mapping, cast
 
+import pandas as pd
 import pyarrow as pa
 from pandas import ArrowDtype
 from pandas.api.extensions import register_extension_dtype
@@ -99,3 +100,5 @@ class TsDtype(ArrowDtype):
     def name(self) -> str:
         fields = ", ".join([f"{field.name}: [{field.type.value_type!s}]" for field in self.pyarrow_dtype])
         return f"ts<{fields}>"
+
+    type = pd.DataFrame
