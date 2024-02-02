@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from conftest import assert_nested_array_series_equal
 from numpy.testing import assert_array_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 from pandas_ts import packer
 
@@ -54,13 +54,7 @@ def test_pack_df():
         },
     )
 
-    assert_array_equal(actual.index, desired.index)
-    assert_array_equal(actual.dtypes, desired.dtypes)
-    assert_array_equal(actual.columns, desired.columns)
-    assert actual.shape == desired.shape
-
-    for column in actual.columns:
-        assert_nested_array_series_equal(actual[column], desired[column])
+    assert_frame_equal(actual, desired)
 
 
 def test_pack_df_into_structs():
@@ -86,8 +80,7 @@ def test_pack_df_into_structs():
         ),
     )
 
-    assert actual.dtype == desired.dtype
-    assert_nested_array_series_equal(actual, desired)
+    assert_series_equal(actual, desired)
 
 
 def test_pack_sorted_df_into_struct():
@@ -113,8 +106,7 @@ def test_pack_sorted_df_into_struct():
         ),
     )
 
-    assert actual.dtype == desired.dtype
-    assert_nested_array_series_equal(actual, desired)
+    assert_series_equal(actual, desired)
 
 
 def test_view_packed_df_as_struct_series():
@@ -139,7 +131,7 @@ def test_view_packed_df_as_struct_series():
     series = packer.view_packed_df_as_struct_series(packed_df)
 
     for field_name in packed_df.columns:
-        assert_nested_array_series_equal(series.struct.field(field_name), packed_df[field_name])
+        assert_series_equal(series.struct.field(field_name), packed_df[field_name])
 
 
 def test_view_sorted_df_as_nested_arrays():
@@ -172,8 +164,7 @@ def test_view_sorted_df_as_nested_arrays():
         index=[1, 2, 3, 4],
         dtype=pd.ArrowDtype(pa.list_(pa.int64())),
     )
-    for column in nested_df:
-        assert_nested_array_series_equal(nested_df[column], desired_nested[column])
+    assert_frame_equal(nested_df, desired_nested)
 
     assert_array_equal(nested_df.attrs["_offset"], [0, 2, 4, 6, 9])
     assert_array_equal(nested_df.attrs["_offset"], nested_df["a"].attrs["_offset"])
@@ -199,7 +190,7 @@ def test_view_sorted_series_as_nested_array():
         index=[1, 2, 3, 4],
         dtype=pd.ArrowDtype(pa.list_(pa.int64())),
     )
-    assert_nested_array_series_equal(nested, desired_nested)
+    assert_series_equal(nested, desired_nested)
 
     assert_array_equal(nested.attrs["_offset"], [0, 2, 4, 6, 9])
 
