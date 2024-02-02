@@ -11,10 +11,12 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 
-__all__ = ["pack_df_into_structs"]
+from pandas_ts.ts_ext_array import TsExtensionArray
+
+__all__ = ["pack_flat", "pack_nested"]
 
 
-def pack_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
+def pack_flat_into_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
     """Pack a "flat" dataframe into a "nested" dataframe.
 
     For the input dataframe with repeated indexes, make a pandas.DataFrame,
@@ -37,38 +39,48 @@ def pack_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
         Output dataframe.
     """
     # TODO: we can optimize name=None case a bit
-    struct_series = pack_df_into_structs(df)
+    struct_series = pack_flat(df)
     packed_df = struct_series.struct.explode()
     if name is not None:
         packed_df[name] = struct_series
     return packed_df
 
 
-def pack_df_into_structs(df: pd.DataFrame) -> pd.Series:
+def pack_flat(df: pd.DataFrame, name: str | None = None) -> pd.Series:
     """Make a structure of lists representation of a "flat" dataframe.
 
-    For the input dataframe with repeated indexes, make a pandas.Series
-    of arrow structures. Each item is a structure of lists, where each
-    list contains the values of the corresponding column. The index of
-    the output series is the unique index of the input dataframe.
+    For the input dataframe with repeated indexes, make a pandas.Series,
+    where each original column is replaced by a structure of lists.
+    The dtype of the column is `pandas_ts.TsDtype` with the corresponding
+    pyarrow type. The index of the output series is the unique index of the
+    input dataframe. The Series has `.ts` accessor, see
+    `pandas_ts.ts_accessor.TsAccessor` for details.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe, with repeated indexes.
+    name : str, optional
+        Name of the pd.Series.
 
     Returns
     -------
     pd.Series
         Output series, with unique indexes.
+
+    See Also
+    --------
+    pandas_ts.ts_accessor.TsAccessor : The accessor for the output series.
+    pandas_ts.TsDtype : The dtype of the output series.
+    pandas_ts.packer.pack_nested : Pack a dataframe of nested arrays.
     """
 
     # TODO: think about the case when the data is pre-sorted and we don't need a data copy.
     flat = df.sort_index(kind="stable")
-    return pack_sorted_df_into_struct(flat)
+    return pack_sorted_df_into_struct(flat, name=name)
 
 
-def pack_sorted_df_into_struct(df: pd.DataFrame) -> pd.Series:
+def pack_sorted_df_into_struct(df: pd.DataFrame, name: str | None = None) -> pd.Series:
     """Make a structure of lists representation of a "flat" dataframe.
 
     Input dataframe must be sorted and all the columns must have pyarrow dtypes.
@@ -79,44 +91,63 @@ def pack_sorted_df_into_struct(df: pd.DataFrame) -> pd.Series:
         Input dataframe, with repeated indexes. It must be sorted and
         all the columns must have pyarrow dtypes.
 
+    name : str, optional
+        Name of the pd.Series.
+
     Returns
     -------
     pd.Series
         Output series, with unique indexes.
     """
     packed_df = view_sorted_df_as_nested_arrays(df)
-    return view_packed_df_as_struct_series(packed_df)
+    # No need to validate the dataframe, the length of the nested arrays is forced to be the same by
+    # the view_sorted_df_as_nested_arrays function.
+    return pack_nested(packed_df, name=name, validate=False)
 
 
-def view_packed_df_as_struct_series(df: pd.DataFrame) -> pd.Series:
+def pack_nested(df: pd.DataFrame, name: str | None = None, *, validate: bool = True) -> pd.Series:
     """Make a series of arrow structures from a dataframe with nested arrays.
+
+    For the input dataframe with repeated indexes, make a pandas.Series,
+    where each original column is replaced by a structure of lists.
+    The dtype of the column is `pandas_ts.TsDtype` with the corresponding
+    pyarrow type. The index of the output series is the unique index of the
+    input dataframe. The Series has `.ts` accessor, see
+    `pandas_ts.ts_accessor.TsAccessor` for details.
+
+    For every row, all the nested array lengths must be the same.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe, with nested arrays.
+    name : str, optional
+        Name of the pd.Series.
+    validate : bool, default True
+        Whether to validate the input dataframe.
 
     Returns
     -------
     pd.Series
         Output series, with unique indexes.
+
+    See Also
+    --------
+    pandas_ts.ts_accessor.TsAccessor : The accessor for the output series.
+    pandas_ts.TsDtype : The dtype of the output series.
+    pandas_ts.packer.pack_flat : Pack a "flat" dataframe with repeated indexes.
     """
     struct_array = pa.StructArray.from_arrays(
         [df[column] for column in df.columns],
         names=df.columns,
     )
-    series = pd.Series(
-        struct_array,
-        dtype=pd.ArrowDtype(struct_array.type),
+    ext_array = TsExtensionArray(struct_array, validate=validate)
+    return pd.Series(
+        ext_array,
         index=df.index,
         copy=False,
+        name=name,
     )
-    if "_offset" in df.attrs:
-        series.attrs["_offset"] = df.attrs["_offset"]
-    else:
-        # TODO: get offsets from underlying pyarrow arrays using any column
-        series.attrs["_offset"] = calculate_sorted_index_offsets(df.index)
-    return series
 
 
 def view_sorted_df_as_nested_arrays(df: pd.DataFrame) -> pd.DataFrame:
@@ -132,8 +163,6 @@ def view_sorted_df_as_nested_arrays(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Output dataframe, with unique indexes. It is a view over the input
         dataframe, so it would mute the input dataframe if modified.
-        The dataframe and all its columns have an attribute `.attrs["_offset"]`
-        with the offsets of the input dataframe index.
     """
     offset_array = calculate_sorted_index_offsets(df.index)
     unique_index = df.index.values[offset_array[:-1]]
@@ -144,7 +173,6 @@ def view_sorted_df_as_nested_arrays(df: pd.DataFrame) -> pd.DataFrame:
     }
 
     df = pd.DataFrame(series_)
-    df.attrs["_offset"] = offset_array
 
     return df
 
@@ -169,8 +197,7 @@ def view_sorted_series_as_nested_array(
     -------
     pd.Series
         Output series, with unique indexes. It is a view over the input series,
-        so it would mute the input series if modified. It has an attribute
-        `.attrs["_offset"]` with the offsets of the input series index.
+        so it would mute the input series if modified.
     """
     if offset is None:
         offset = calculate_sorted_index_offsets(series.index)
@@ -181,16 +208,12 @@ def view_sorted_series_as_nested_array(
         offset,
         pa.array(series),
     )
-    new_series = pd.Series(
+    return pd.Series(
         list_array,
         dtype=pd.ArrowDtype(list_array.type),
         index=unique_index,
         copy=False,
     )
-
-    new_series.attrs["_offset"] = offset
-
-    return new_series
 
 
 def calculate_sorted_index_offsets(index: pd.Index) -> np.ndarray:
