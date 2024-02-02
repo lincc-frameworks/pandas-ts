@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, Iterator, cast
 
+import numpy as np
+import pandas as pd
 import pyarrow as pa
+from numpy.typing import DTypeLike
+
+# Needed by ArrowExtensionArray.to_numpy(na_value=no_default)
+from pandas._libs.lib import no_default
 
 # It is considered to be an experimental, so we need to be careful with it.
 from pandas.core.arrays import ArrowExtensionArray
+from pyarrow import ExtensionArray
 
 from pandas_ts.ts_dtype import TsDtype
 from pandas_ts.utils import is_pa_type_a_list
@@ -63,6 +70,32 @@ class TsExtensionArray(ArrowExtensionArray):
                 # compare offsets from the first list array with the current one
                 if not first_list_array.offsets.equals(list_array.offsets):
                     raise ValueError("Offsets of all ListArrays must be the same")
+
+    def __getitem__(self, item):
+        value = super().__getitem__(item)
+        # Convert "scalar" value to pd.DataFrame
+        if not isinstance(value, dict):
+            return value
+        return pd.DataFrame(value, copy=True)
+
+    def __iter__(self) -> Iterator[Any]:
+        for value in super().__iter__():
+            # Convert "scalar" value to pd.DataFrame
+            if not isinstance(value, dict):
+                yield value
+            else:
+                yield pd.DataFrame(value, copy=True)
+
+    def to_numpy(
+        self, dtype: DTypeLike | None = None, copy: bool = False, na_value: Any = no_default
+    ) -> np.ndarray:
+        array = super().to_numpy(dtype=dtype, copy=copy, na_value=na_value)
+
+        # Hack with np.empty is the only way to force numpy to create 1-d array of objects
+        result = np.empty(shape=array.shape, dtype=object)
+        # We do copy=False here because user's 'copy' is already handled by ArrowExtensionArray.to_numpy
+        result[:] = [pd.DataFrame(value, copy=False) for value in array]
+        return result
 
     @property
     def list_offsets(self) -> pa.ChunkedArray:

@@ -3,7 +3,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 from numpy.testing import assert_array_equal
-from pandas.testing import assert_series_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 from pandas_ts import TsDtype
 from pandas_ts.ts_ext_array import TsExtensionArray
@@ -106,3 +106,35 @@ def test_list_offsets():
 
     desired = pa.chunked_array([pa.array([0, 3, 6])])
     assert_array_equal(ext_array.list_offsets, desired)
+
+
+def test___getitem__():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[100, 101])
+
+    second_row_as_df = series[101]
+    assert_frame_equal(
+        second_row_as_df, pd.DataFrame({"a": np.array([1.0, 2.0, 1.0]), "b": -np.array([3.0, 4.0, 5.0])})
+    )
+
+
+def test_series_apply_udf_argument():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[100, 101])
+
+    series_of_dfs = series.apply(lambda x: x)
+    assert_frame_equal(
+        series_of_dfs.iloc[0], pd.DataFrame({"a": np.array([1.0, 2.0, 3.0]), "b": -np.array([4.0, 5.0, 6.0])})
+    )
