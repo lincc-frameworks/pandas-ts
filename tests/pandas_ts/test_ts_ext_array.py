@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pytest
 from pandas.testing import assert_series_equal
 
 from pandas_ts import TsDtype
@@ -66,3 +67,27 @@ def test_series_built_from_dict():
         )
     )
     assert_series_equal(series, pd.Series(desired_ext_array))
+
+
+# Test exception raises for wrong dtype
+@pytest.mark.parametrize(
+    "data",
+    [
+        # Must be struct
+        [
+            1,
+            2,
+            3,
+        ],
+        # Must be struct
+        {"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]},
+        # Lists of the same object must have the same length for each field
+        [{"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]}, {"a": [1, 2, 1], "b": [-3.0, -4.0]}],
+        # Struct fields must be lists
+        [{"a": 1, "b": [-4.0, -5.0, -6.0]}, {"a": 2, "b": [-3.0, -4.0, -5.0]}],
+    ],
+)
+def test_series_built_raises(data):
+    pa_array = pa.array(data)
+    with pytest.raises(ValueError):
+        _array = TsExtensionArray(pa_array)
