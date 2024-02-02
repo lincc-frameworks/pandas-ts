@@ -4,10 +4,10 @@ import pyarrow as pa
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-from pandas_ts import packer
+from pandas_ts import TsDtype, packer
 
 
-def test_pack_df():
+def test_pack_flat_into_df():
     df = pd.DataFrame(
         data={
             "a": [7, 8, 9, 1, 2, 3, 4, 5, 6],
@@ -15,7 +15,7 @@ def test_pack_df():
         },
         index=[4, 4, 4, 1, 1, 2, 2, 3, 3],
     )
-    actual = packer.pack_df(df, name="struct")
+    actual = packer.pack_flat_into_df(df, name="struct")
 
     desired = pd.DataFrame(
         data={
@@ -46,9 +46,7 @@ def test_pack_df():
                     (np.array([5, 6]), np.array([0, 1])),
                     (np.array([7, 8, 9]), np.array([0, 1, 0])),
                 ],
-                dtype=pd.ArrowDtype(
-                    pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.int64()))])
-                ),
+                dtype=TsDtype.from_fields(dict(a=pa.int64(), b=pa.int64())),
                 index=[1, 2, 3, 4],
             ),
         },
@@ -57,7 +55,7 @@ def test_pack_df():
     assert_frame_equal(actual, desired)
 
 
-def test_pack_df_into_structs():
+def test_pack_flat():
     df = pd.DataFrame(
         data={
             "a": [7, 8, 9, 1, 2, 3, 4, 5, 6],
@@ -65,7 +63,7 @@ def test_pack_df_into_structs():
         },
         index=[4, 4, 4, 1, 1, 2, 2, 3, 3],
     )
-    actual = packer.pack_df_into_structs(df)
+    actual = packer.pack_flat(df)
 
     desired = pd.Series(
         data=[
@@ -75,9 +73,7 @@ def test_pack_df_into_structs():
             (np.array([7, 8, 9]), np.array([0, 1, 0])),
         ],
         index=[1, 2, 3, 4],
-        dtype=pd.ArrowDtype(
-            pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.int64()))])
-        ),
+        dtype=TsDtype.from_fields(dict(a=pa.int64(), b=pa.int64())),
     )
 
     assert_series_equal(actual, desired)
@@ -101,15 +97,13 @@ def test_pack_sorted_df_into_struct():
             (np.array([7, 8, 9]), np.array([0, 1, 0])),
         ],
         index=[1, 2, 3, 4],
-        dtype=pd.ArrowDtype(
-            pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.int64()))])
-        ),
+        dtype=TsDtype.from_fields(dict(a=pa.int64(), b=pa.int64())),
     )
 
     assert_series_equal(actual, desired)
 
 
-def test_view_packed_df_as_struct_series():
+def test_pack_nested():
     packed_df = pd.DataFrame(
         data={
             "a": [
@@ -128,7 +122,7 @@ def test_view_packed_df_as_struct_series():
         index=[1, 2, 3, 4],
         dtype=pd.ArrowDtype(pa.list_(pa.int64())),
     )
-    series = packer.view_packed_df_as_struct_series(packed_df)
+    series = packer.pack_nested(packed_df)
 
     for field_name in packed_df.columns:
         assert_series_equal(series.struct.field(field_name), packed_df[field_name])
@@ -166,10 +160,6 @@ def test_view_sorted_df_as_nested_arrays():
     )
     assert_frame_equal(nested_df, desired_nested)
 
-    assert_array_equal(nested_df.attrs["_offset"], [0, 2, 4, 6, 9])
-    assert_array_equal(nested_df.attrs["_offset"], nested_df["a"].attrs["_offset"])
-    assert_array_equal(nested_df.attrs["_offset"], nested_df["b"].attrs["_offset"])
-
 
 def test_view_sorted_series_as_nested_array():
     series = pd.Series(
@@ -191,11 +181,3 @@ def test_view_sorted_series_as_nested_array():
         dtype=pd.ArrowDtype(pa.list_(pa.int64())),
     )
     assert_series_equal(nested, desired_nested)
-
-    assert_array_equal(nested.attrs["_offset"], [0, 2, 4, 6, 9])
-
-
-def test_calculate_sorted_index_offsets():
-    index = pd.Index([1, 1, 2, 2, 3, 3, 4, 4])
-    offset = packer.calculate_sorted_index_offsets(index)
-    assert_array_equal(offset, [0, 2, 4, 6, 8])
