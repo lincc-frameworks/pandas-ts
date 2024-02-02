@@ -63,3 +63,12 @@ class TsExtensionArray(ArrowExtensionArray):
                 # compare offsets from the first list array with the current one
                 if not first_list_array.offsets.equals(list_array.offsets):
                     raise ValueError("Offsets of all ListArrays must be the same")
+
+    @property
+    def list_offsets(self) -> pa.ChunkedArray:
+        """The list offsets of the field arrays.
+
+        It is a chunk array of list offsets of the first field array.
+        (All fields must have the same offsets.)
+        """
+        return pa.chunked_array([chunk.field(0).offsets for chunk in self._pa_array.iterchunks()])

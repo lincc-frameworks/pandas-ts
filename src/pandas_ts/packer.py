@@ -39,7 +39,7 @@ def pack_flat_into_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
         Output dataframe.
     """
     # TODO: we can optimize name=None case a bit
-    struct_series = pack_flat(df)
+    struct_series = pack_flat(df, name=name)
     packed_df = struct_series.struct.explode()
     if name is not None:
         packed_df[name] = struct_series
