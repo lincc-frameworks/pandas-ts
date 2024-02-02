@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
-from conftest import assert_df_equal, assert_nested_array_series_equal
 from numpy.testing import assert_array_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 
 @pytest.mark.skip("It is really tricky to test it: some other test may import pandas-ts before this one")
@@ -95,12 +95,7 @@ def test_ts_accessor_to_nested():
             ),
         },
     )
-
-    assert_array_equal(nested.dtypes, desired.dtypes)
-    assert_array_equal(nested.index, desired.index)
-
-    for column in nested.columns:
-        assert_nested_array_series_equal(nested[column], desired[column])
+    assert_frame_equal(nested, desired)
 
 
 def test_ts_accessor_to_flat():
@@ -168,20 +163,22 @@ def test_ts_accessor___getitem__():
     )
     series = pd.Series(struct_array, dtype=pd.ArrowDtype(struct_array.type), index=[0, 1])
 
-    assert_nested_array_series_equal(
+    assert_series_equal(
         series.ts["a"],
         pd.Series(
             [np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])],
             dtype=pd.ArrowDtype(pa.list_(pa.float64())),
             index=[0, 1],
+            name="a",
         ),
     )
-    assert_nested_array_series_equal(
+    assert_series_equal(
         series.ts["b"],
         pd.Series(
             [-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])],
             dtype=pd.ArrowDtype(pa.list_(pa.float64())),
             index=[0, 1],
+            name="b",
         ),
     )
 
@@ -199,7 +196,7 @@ def test_ts_accessor_get():
     series = pd.Series(struct_array, dtype=pd.ArrowDtype(struct_array.type), index=[100, 101])
 
     second_row_as_df = series.ts.get(101)
-    assert_df_equal(
+    assert_frame_equal(
         second_row_as_df, pd.DataFrame({"a": np.array([1.0, 2.0, 1.0]), "b": -np.array([3.0, 4.0, 5.0])})
     )
 
@@ -218,6 +215,6 @@ def test_ts_accessor_iget():
     series = pd.Series(struct_array, dtype=pd.ArrowDtype(struct_array.type), index=[100, 101])
 
     first_row_as_df = series.ts.iget(-2)
-    assert_df_equal(
+    assert_frame_equal(
         first_row_as_df, pd.DataFrame({"a": np.array([1.0, 2.0, 3.0]), "b": -np.array([4.0, 5.0, 6.0])})
     )
