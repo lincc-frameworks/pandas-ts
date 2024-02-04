@@ -61,15 +61,11 @@ testpaths = [
 
 [tool.black]
 line-length = 110
-target-version = ["py38"]
-
-[tool.isort]
-profile = "black"
-line_length = 110
+target-version = ["py39"]
 
 [tool.ruff]
 line-length = 110
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = [
@@ -99,7 +95,6 @@ select = [
     "D300",
     "D417",
     "D419",
-
 ]
 
 ignore = [
