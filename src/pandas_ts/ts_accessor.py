@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,7 @@ __all__ = ["TsAccessor"]
 
 @register_series_accessor("ts")
 class TsAccessor:
+    """Accessor for operations on Series of TsDtype"""
     def __init__(self, series):
         self._check_series(series)
 
@@ -34,7 +35,8 @@ class TsAccessor:
         for field in pyarrow_dtype:
             if not is_pa_type_a_list(field.type):
                 raise AttributeError(
-                    f"Can only use .ts accessor with a Series with dtype pyarrow struct dtype, all fields must be list types. Given struct has unsupported field {field}"
+                    "Can only use .ts accessor with a Series with dtype pyarrow struct dtype, all fields "
+                    f"must be list types. Given struct has unsupported field {field}"
                 )
 
     def to_nested(self):

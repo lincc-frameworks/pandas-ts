@@ -1,17 +1,24 @@
 # Changes here will be overwritten by Copier
-_commit: v1.4.6
+_commit: v1.4.6-38-gc8eefc6
 _src_path: gh:lincc-frameworks/python-project-template
-author_email: malanchev@cmu.edu
+author_email: hombit@gmail.com
 author_name: LINCC Frameworks
 create_example_module: true
 custom_install: true
+enforce_style:
+- ruff
+failure_notification:
+- email
 include_benchmarks: true
 include_docs: true
 include_notebooks: true
 mypy_type_checking: basic
 package_name: pandas_ts
-preferred_linter: black
 project_license: MIT
 project_name: pandas-ts
 project_organization: lincc-frameworks
-use_isort: true
+python_versions:
+- '3.9'
+- '3.10'
+- '3.11'
+- '3.12'
