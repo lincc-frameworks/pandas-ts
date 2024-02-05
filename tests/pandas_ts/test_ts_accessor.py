@@ -59,7 +59,7 @@ def test_no_ts_accessor_for_wrong_struct_fields():
         _accessor = series.ts
 
 
-def test_ts_accessor_to_nested():
+def test_ts_accessor_to_lists():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
@@ -69,7 +69,7 @@ def test_ts_accessor_to_nested():
     )
     series = pd.Series(struct_array, dtype=pd.ArrowDtype(struct_array.type), index=[0, 1])
 
-    nested = series.ts.to_nested()
+    lists = series.ts.to_lists()
 
     desired = pd.DataFrame(
         data={
@@ -85,7 +85,7 @@ def test_ts_accessor_to_nested():
             ),
         },
     )
-    assert_frame_equal(nested, desired)
+    assert_frame_equal(lists, desired)
 
 
 def test_ts_accessor_to_flat():

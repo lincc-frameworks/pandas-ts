@@ -1,4 +1,4 @@
-"""Exploratory module for nested-array data representation conversions
+"""Module for converting between "flat" and "list" and "ts" representations
 
 TODO: mask support
 TODO: multi-index support
@@ -13,7 +13,7 @@ import pyarrow as pa
 
 from pandas_ts.ts_ext_array import TsExtensionArray
 
-__all__ = ["pack_flat", "pack_nested"]
+__all__ = ["pack_flat", "pack_lists"]
 
 
 def pack_flat_into_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
@@ -72,7 +72,7 @@ def pack_flat(df: pd.DataFrame, name: str | None = None) -> pd.Series:
     --------
     pandas_ts.ts_accessor.TsAccessor : The accessor for the output series.
     pandas_ts.TsDtype : The dtype of the output series.
-    pandas_ts.packer.pack_nested : Pack a dataframe of nested arrays.
+    pandas_ts.packer.pack_lists : Pack a dataframe of nested arrays.
     """
 
     # TODO: think about the case when the data is pre-sorted and we don't need a data copy.
@@ -99,13 +99,13 @@ def pack_sorted_df_into_struct(df: pd.DataFrame, name: str | None = None) -> pd.
     pd.Series
         Output series, with unique indexes.
     """
-    packed_df = view_sorted_df_as_nested_arrays(df)
+    packed_df = view_sorted_df_as_list_arrays(df)
     # No need to validate the dataframe, the length of the nested arrays is forced to be the same by
-    # the view_sorted_df_as_nested_arrays function.
-    return pack_nested(packed_df, name=name, validate=False)
+    # the view_sorted_df_as_list_arrays function.
+    return pack_lists(packed_df, name=name, validate=False)
 
 
-def pack_nested(df: pd.DataFrame, name: str | None = None, *, validate: bool = True) -> pd.Series:
+def pack_lists(df: pd.DataFrame, name: str | None = None, *, validate: bool = True) -> pd.Series:
     """Make a series of arrow structures from a dataframe with nested arrays.
 
     For the input dataframe with repeated indexes, make a pandas.Series,
@@ -115,12 +115,13 @@ def pack_nested(df: pd.DataFrame, name: str | None = None, *, validate: bool = T
     input dataframe. The Series has `.ts` accessor, see
     `pandas_ts.ts_accessor.TsAccessor` for details.
 
-    For every row, all the nested array lengths must be the same.
+    For every row, all the nested array (aka pyarrow list) lengths must be
+    the same.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Input dataframe, with nested arrays.
+        Input dataframe, with pyarrow list-arrays.
     name : str, optional
         Name of the pd.Series.
     validate : bool, default True
@@ -150,7 +151,7 @@ def pack_nested(df: pd.DataFrame, name: str | None = None, *, validate: bool = T
     )
 
 
-def view_sorted_df_as_nested_arrays(df: pd.DataFrame) -> pd.DataFrame:
+def view_sorted_df_as_list_arrays(df: pd.DataFrame) -> pd.DataFrame:
     """Make a nested array representation of a "flat" dataframe.
 
     Parameters
@@ -168,7 +169,7 @@ def view_sorted_df_as_nested_arrays(df: pd.DataFrame) -> pd.DataFrame:
     unique_index = df.index.values[offset_array[:-1]]
 
     series_ = {
-        column: view_sorted_series_as_nested_array(df[column], offset_array, unique_index)
+        column: view_sorted_series_as_list_array(df[column], offset_array, unique_index)
         for column in df.columns
     }
 
@@ -177,7 +178,7 @@ def view_sorted_df_as_nested_arrays(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def view_sorted_series_as_nested_array(
+def view_sorted_series_as_list_array(
     series: pd.Series, offset: np.ndarray | None = None, unique_index: np.ndarray | None = None
 ) -> pd.Series:
     """Make a nested array representation of a "flat" series.
