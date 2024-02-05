@@ -37,5 +37,6 @@ jobs:
       run: |
         mypy ./src ./tests --ignore-missing-imports
     - name: Analyze code with ruff
+      run: |
        ruff format --check
        ruff check
