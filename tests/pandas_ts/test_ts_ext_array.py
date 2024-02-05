@@ -151,6 +151,5 @@ def test___iter__():
     series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[100, 101])
 
     # Check last df only
-    for i, df in enumerate(series):
-        pass
+    df = list(series)[-1]
     assert_frame_equal(df, pd.DataFrame({"a": np.array([1.0, 2.0, 1.0]), "b": -np.array([3.0, 4.0, 5.0])}))

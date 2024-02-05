@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Iterator, cast
+from collections.abc import Iterator
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from numpy.typing import DTypeLike
 
 # Needed by ArrowExtensionArray.to_numpy(na_value=no_default)
 from pandas._libs.lib import no_default
 
 # It is considered to be an experimental, so we need to be careful with it.
 from pandas.core.arrays import ArrowExtensionArray
-from pyarrow import ExtensionArray
 
 from pandas_ts.ts_dtype import TsDtype
 from pandas_ts.utils import is_pa_type_a_list
@@ -87,8 +86,28 @@ class TsExtensionArray(ArrowExtensionArray):
                 yield pd.DataFrame(value, copy=True)
 
     def to_numpy(
-        self, dtype: DTypeLike | None = None, copy: bool = False, na_value: Any = no_default
+        self, dtype: None = None, copy: bool = False, na_value: Any = no_default
     ) -> np.ndarray:
+        """Convert the extension array to a numpy array.
+
+        Parameters
+        ----------
+        dtype : None
+            This parameter is left for compatibility with the base class
+            method, but it is not used. dtype of the returned array is
+            always object.
+        copy : bool, default False
+            Whether to copy the data. It is not garanteed that the data
+            will not be copied if copy is False.
+        na_value : Any, default no_default
+            TODO: support NA values
+
+        Returns
+        -------
+        np.ndarray
+            The numpy array of pd.DataFrame objects. Each element is a single
+            time-series.
+        """
         array = super().to_numpy(dtype=dtype, copy=copy, na_value=na_value)
 
         # Hack with np.empty is the only way to force numpy to create 1-d array of objects
@@ -102,6 +121,11 @@ class TsExtensionArray(ArrowExtensionArray):
         """The list offsets of the field arrays.
 
         It is a chunk array of list offsets of the first field array.
-        (All fields must have the same offsets.)
+        (Since all fields are validated to have the same offsets.)
+
+        Returns
+        -------
+        pa.ChunkedArray
+            The list offsets of the field arrays.
         """
         return pa.chunked_array([chunk.field(0).offsets for chunk in self._pa_array.iterchunks()])

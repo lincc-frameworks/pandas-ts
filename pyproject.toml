@@ -55,8 +55,9 @@ build-backend = "setuptools.build_meta"
 write_to = "src/pandas_ts/_version.py"
 
 [tool.pytest.ini_options]
-testpaths = [
+addopts = [
     "tests",
+    "--doctest-modules", "src",
 ]
 
 [tool.black]
