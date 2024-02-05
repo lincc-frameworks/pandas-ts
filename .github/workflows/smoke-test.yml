@@ -42,3 +42,5 @@ jobs:
       run: |
         python -m pytest
     - name: Send failure email
+      run: |
+        echo "NOT IMPLEMENTED IN PPT, UPDATE PPT WHEN IT IS READY"
