@@ -85,9 +85,7 @@ class TsExtensionArray(ArrowExtensionArray):
             else:
                 yield pd.DataFrame(value, copy=True)
 
-    def to_numpy(
-        self, dtype: None = None, copy: bool = False, na_value: Any = no_default
-    ) -> np.ndarray:
+    def to_numpy(self, dtype: None = None, copy: bool = False, na_value: Any = no_default) -> np.ndarray:
         """Convert the extension array to a numpy array.
 
         Parameters

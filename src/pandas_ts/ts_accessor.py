@@ -13,6 +13,7 @@ __all__ = ["TsAccessor"]
 @register_series_accessor("ts")
 class TsAccessor:
     """Accessor for operations on Series of TsDtype"""
+
     def __init__(self, series):
         self._check_series(series)
 

@@ -18,6 +18,7 @@ __all__ = ["TsDtype"]
 @register_extension_dtype
 class TsDtype(ArrowDtype):
     """Data type to handle packed time series data"""
+
     pyarrow_dtype: pa.StructType
 
     def __init__(self, pyarrow_dtype: pa.DataType) -> None:

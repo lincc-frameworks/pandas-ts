@@ -24,7 +24,6 @@ def test_ts_accessor_not_registered():
 
 
 def test_ts_accessor_registered():
-
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1, 2, 3]), np.array([1.0, 2.0, 1.0])]),
@@ -38,7 +37,6 @@ def test_ts_accessor_registered():
 
 
 def test_no_ts_accessor_for_non_struct():
-
     array = pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])])
     series = pd.Series(array, dtype=pd.ArrowDtype(array.type), index=[0, 1])
 
@@ -47,7 +45,6 @@ def test_no_ts_accessor_for_non_struct():
 
 
 def test_no_ts_accessor_for_wrong_struct_fields():
-
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1, 2, 3]), np.array([1.0, 2.0, 1.0])]),
@@ -63,7 +60,6 @@ def test_no_ts_accessor_for_wrong_struct_fields():
 
 
 def test_ts_accessor_to_nested():
-
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
@@ -93,7 +89,6 @@ def test_ts_accessor_to_nested():
 
 
 def test_ts_accessor_to_flat():
-
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -130,7 +125,6 @@ def test_ts_accessor_to_flat():
 
 
 def test_ts_accessor_fields():
-
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -144,7 +138,6 @@ def test_ts_accessor_fields():
 
 
 def test_ts_accessor___getitem__():
-
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
