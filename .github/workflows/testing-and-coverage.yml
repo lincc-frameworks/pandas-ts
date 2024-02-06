@@ -27,11 +27,11 @@ jobs:
       run: |
         sudo apt-get update
         python -m pip install --upgrade pip
-        pip install -e .
-        pip install -e .[dev]
+        python -m pip install -e .
+        python -m pip install -e .[dev]
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Run unit tests with pytest
       run: |
-        python -m pytest tests --cov=pandas_ts --cov-report=xml
+        python -m pytest --cov=pandas_ts --cov-report=xml
     - name: Upload coverage report to codecov
       uses: codecov/codecov-action@v3
