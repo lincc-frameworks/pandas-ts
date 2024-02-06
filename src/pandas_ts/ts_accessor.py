@@ -1,18 +1,25 @@
+from collections.abc import Generator, MutableMapping
 from typing import cast
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from numpy.typing import ArrayLike
 from pandas.api.extensions import register_series_accessor
 
-from pandas_ts.utils import is_pa_type_a_list
+from pandas_ts.ts_dtype import TsDtype
 
 __all__ = ["TsAccessor"]
 
 
 @register_series_accessor("ts")
-class TsAccessor:
-    """Accessor for operations on Series of TsDtype"""
+class TsAccessor(MutableMapping):
+    """Accessor for operations on Series of TsDtype
+
+    This accessor implements `MutableMapping` interface over the fields of the
+    struct, so you can access, change and delete the fields as if it was a
+    dictionary, with `[]`, `[] =` and `del` operators.
+    """
 
     def __init__(self, series):
         self._check_series(series)
@@ -22,29 +29,14 @@ class TsAccessor:
     @staticmethod
     def _check_series(series):
         dtype = series.dtype
-        TsAccessor._check_dtype(dtype)
+        if not isinstance(dtype, TsDtype):
+            raise AttributeError(f"Can only use .ts accessor with a Series of TsDtype, got {dtype}")
 
-    @staticmethod
-    def _check_dtype(dtype):
-        # TODO: check if dtype is TsDtype when it is implemented
-        if not hasattr(dtype, "pyarrow_dtype"):
-            raise AttributeError("Can only use .ts accessor with a Series with dtype pyarrow struct dtype")
-        pyarrow_dtype = dtype.pyarrow_dtype
-        if not pa.types.is_struct(pyarrow_dtype):
-            raise AttributeError("Can only use .ts accessor with a Series with dtype pyarrow struct dtype")
-
-        for field in pyarrow_dtype:
-            if not is_pa_type_a_list(field.type):
-                raise AttributeError(
-                    "Can only use .ts accessor with a Series with dtype pyarrow struct dtype, all fields "
-                    f"must be list types. Given struct has unsupported field {field}"
-                )
-
-    def to_lists(self):
+    def to_lists(self) -> pd.DataFrame:
         """Convert ts into dataframe of list-array columns"""
         return self._series.struct.explode()
 
-    def to_flat(self):
+    def to_flat(self) -> pd.DataFrame:
         """Convert ts into dataframe of flat arrays"""
         fields = self._series.struct.dtypes.index
         if len(fields) == 0:
@@ -65,9 +57,109 @@ class TsAccessor:
         return pd.DataFrame(flat_series)
 
     @property
-    def fields(self) -> pd.Index:
+    def flat_length(self) -> int:
+        """Length of the flat arrays"""
+        return self._series.array.flat_length
+
+    @property
+    def fields(self) -> list[str]:
         """Names of the nested columns"""
-        return self._series.struct.dtypes.index
+        # For some reason, .struct.dtypes is cached, so we will use TsExtensionArray directly
+        return self._series.array.field_names
+
+    def set_flat_field(self, field: str, value: ArrayLike) -> None:
+        """Set the field from flat-array of values, in-place
+
+        Parameters
+        ----------
+        field : str
+            Name of the field to set. If not present, it will be added.
+        value : ArrayLike
+            Array of values to set. It must be a scalar or have the same length
+             as the flat arrays, e.g. `self.flat_length`.
+        """
+        self._series.array.set_flat_field(field, value)
+
+    def set_list_field(self, field: str, value: ArrayLike) -> None:
+        """Set the field from list-array, in-place
+
+        Parameters
+        ----------
+        field : str
+            Name of the field to set. If not present, it will be added.
+        value : ArrayLike
+            Array of values to set. It must be a list-array of the same length
+             as the series, e.g. length of the series.
+        """
+        self._series.array.set_list_field(field, value)
+
+    # I intentionally don't call it `drop` or `drop_field` because `pd.DataFrame.drop` is not inplace
+    # by default, and I wouldn't like to surprise the user.
+    def delete_field(self, field: str) -> pd.Series:
+        """Delete the field from the struct and return it.
+
+        Parameters
+        ----------
+        field : str
+            Name of the field to delete.
+
+        Returns
+        -------
+        pd.Series
+            The deleted field.
+        """
+        series = self[field]
+        self._series.array.delete_field(field)
+        return series
 
     def __getitem__(self, key: str) -> pd.Series:
         return self._series.struct.field(key)
+
+    def __setitem__(self, key: str, value: ArrayLike) -> None:
+        # TODO: we can be much-much smarter about the performance here
+        # TODO: think better about underlying pa.ChunkArray
+
+        # Everything is empty, do nothing
+        if len(self._series) == 0 and np.ndim(value) != 0:
+            array = pa.array(value)
+            if len(array) == 0:
+                return
+
+        if len(self._series) == self.flat_length:
+            raise ValueError(
+                f"Cannot use `.ts[{key}] = value` when the series has the same count of 'list' rows as 'flat'"
+                "rows, because it is ambiguous whether the input is a 'flat' or a 'list' array. Use"
+                "`.ts.set_flat_field()` or `.ts.set_list_field()` instead."
+            )
+
+        # Set single value for all rows
+        if np.ndim(value) == 0:
+            self.set_flat_field(key, value)
+            return
+
+        pa_array = pa.array(value)
+
+        # Input is a flat array of values
+        if len(pa_array) == self.flat_length:
+            self.set_flat_field(key, pa_array)
+            return
+
+        # Input is a list-array of values
+        if len(pa_array) == len(self._series):
+            self.set_list_field(key, pa_array)
+            return
+
+        raise ValueError(
+            f"Cannot set field {key} with value of length {len(pa_array)}, the value is expected to be "
+            f"either a scalar, a 'flat' array of length {self.flat_length}, or a 'list' array of length "
+            f"{len(self._series)}."
+        )
+
+    def __delitem__(self, key: str) -> None:
+        self.delete_field(key)
+
+    def __iter__(self) -> Generator[str, None, None]:
+        yield from iter(self._series.struct.dtypes.index)
+
+    def __len__(self) -> int:
+        return len(self._series.struct.dtypes)

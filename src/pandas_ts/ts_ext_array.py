@@ -6,6 +6,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from numpy.typing import ArrayLike
 
 # Needed by ArrowExtensionArray.to_numpy(na_value=no_default)
 from pandas._libs.lib import no_default
@@ -14,7 +15,7 @@ from pandas._libs.lib import no_default
 from pandas.core.arrays import ArrowExtensionArray
 
 from pandas_ts.ts_dtype import TsDtype
-from pandas_ts.utils import is_pa_type_a_list
+from pandas_ts.utils import enumerate_chunks, is_pa_type_a_list
 
 __all__ = ["TsExtensionArray"]
 
@@ -69,6 +70,12 @@ class TsExtensionArray(ArrowExtensionArray):
                 # compare offsets from the first list array with the current one
                 if not first_list_array.offsets.equals(list_array.offsets):
                     raise ValueError("Offsets of all ListArrays must be the same")
+
+    def _replace_pa_array(self, pa_array: pa.ChunkedArray, *, validate: bool) -> None:
+        if validate:
+            self._validate(pa_array)
+        self._pa_array = pa_array
+        self._dtype = TsDtype(pa_array.chunk(0).type)
 
     def __getitem__(self, item):
         value = super().__getitem__(item)
@@ -127,3 +134,101 @@ class TsExtensionArray(ArrowExtensionArray):
             The list offsets of the field arrays.
         """
         return pa.chunked_array([chunk.field(0).offsets for chunk in self._pa_array.iterchunks()])
+
+    @property
+    def field_names(self) -> list[str]:
+        """Names of the nested columns"""
+        return [field.name for field in self._pa_array.chunk(0).type]
+
+    @property
+    def flat_length(self) -> int:
+        """Length of the flat arrays"""
+        return sum(chunk.field(0).value_lengths().sum().as_py() for chunk in self._pa_array.iterchunks())
+
+    def set_flat_field(self, field: str, value: ArrayLike) -> None:
+        """Set the field from flat-array of values
+
+        Parameters
+        ----------
+        field : str
+            The name of the field.
+        value : ArrayLike
+            The 'flat' array of values to be set.
+        """
+        # TODO: optimize for the case when the input is a pa.ChunkedArray
+
+        if np.ndim(value) == 0:
+            value = np.repeat(value, self.flat_length)
+
+        pa_array = pa.array(value)
+
+        if len(pa_array) != self.flat_length:
+            raise ValueError("The input must be a scalar or have the same length as the flat arrays")
+
+        offsets = self.list_offsets.combine_chunks()
+        list_array = pa.ListArray.from_arrays(values=pa_array, offsets=offsets)
+
+        return self.set_list_field(field, list_array)
+
+    def set_list_field(self, field: str, value: ArrayLike) -> None:
+        """Set the field from list-array
+
+        Parameters
+        ----------
+        field : str
+            The name of the field.
+        value : ArrayLike
+            The list-array of values to be set.
+        """
+        # TODO: optimize for the case when the input is a pa.ChunkedArray
+
+        pa_array = pa.array(value)
+
+        if not is_pa_type_a_list(pa_array.type):
+            raise ValueError(f"Expected a list array, got {pa_array.type}")
+
+        if len(pa_array) != len(self):
+            raise ValueError("The length of the list-array must be equal to the length of the series")
+
+        chunks = []
+        for sl, chunk in enumerate_chunks(self._pa_array):
+            chunk = cast(pa.StructArray, chunk)
+
+            # Build a new struct array. We collect all existing fields and add the new one.
+            struct_dict = {}
+            for pa_field in chunk.type:
+                struct_dict[pa_field.name] = chunk.field(pa_field.name)
+            struct_dict[field] = pa.array(pa_array[sl])
+
+            struct_array = pa.StructArray.from_arrays(struct_dict.values(), struct_dict.keys())
+            chunks.append(struct_array)
+        pa_array = pa.chunked_array(chunks)
+
+        self._replace_pa_array(pa_array, validate=True)
+
+    def delete_field(self, field: str):
+        """Delete a field from the struct array
+
+        Parameters
+        ----------
+        field : str
+            The name of the field to be deleted.
+        """
+        if field not in self.field_names:
+            raise ValueError(f"Field '{field}' not found")
+
+        if len(self.field_names) == 1:
+            raise ValueError("Cannot delete the last field")
+
+        chunks = []
+        for chunk in self._pa_array.iterchunks():
+            chunk = cast(pa.StructArray, chunk)
+            struct_dict = {}
+            for pa_field in chunk.type:
+                if pa_field.name != field:
+                    struct_dict[pa_field.name] = chunk.field(pa_field.name)
+            struct_array = pa.StructArray.from_arrays(struct_dict.values(), struct_dict.keys())
+            chunks.append(struct_array)
+        pa_array = pa.chunked_array(chunks)
+
+        self._replace_pa_array(pa_array, validate=False)
