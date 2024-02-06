@@ -49,7 +49,8 @@ repos:
       - id: ruff
         args: [ --fix ]
         name: Lint code using ruff
-        types_or: [ python, pyi, jupyter ]
+        # Disable ruff for notebooks since it is too strict.
+        types_or: [ python, pyi ]
       - id: ruff-format
         name: Format code using ruff
         types_or: [ python, pyi, jupyter ]

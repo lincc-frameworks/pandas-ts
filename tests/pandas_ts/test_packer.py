@@ -103,7 +103,7 @@ def test_pack_sorted_df_into_struct():
     assert_series_equal(actual, desired)
 
 
-def test_pack_nested():
+def test_pack_lists():
     packed_df = pd.DataFrame(
         data={
             "a": [
@@ -122,13 +122,13 @@ def test_pack_nested():
         index=[1, 2, 3, 4],
         dtype=pd.ArrowDtype(pa.list_(pa.int64())),
     )
-    series = packer.pack_nested(packed_df)
+    series = packer.pack_lists(packed_df)
 
     for field_name in packed_df.columns:
         assert_series_equal(series.struct.field(field_name), packed_df[field_name])
 
 
-def test_view_sorted_df_as_nested_arrays():
+def test_view_sorted_df_as_list_arrays():
     flat_df = pd.DataFrame(
         data={
             "a": [1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -136,7 +136,7 @@ def test_view_sorted_df_as_nested_arrays():
         },
         index=[1, 1, 2, 2, 3, 3, 4, 4, 4],
     )
-    nested_df = packer.view_sorted_df_as_nested_arrays(flat_df)
+    nested_df = packer.view_sorted_df_as_list_arrays(flat_df)
 
     assert_array_equal(nested_df.index, [1, 2, 3, 4])
 
@@ -161,12 +161,12 @@ def test_view_sorted_df_as_nested_arrays():
     assert_frame_equal(nested_df, desired_nested)
 
 
-def test_view_sorted_series_as_nested_array():
+def test_view_sorted_series_as_list_array():
     series = pd.Series(
         data=[1, 2, 3, 4, 5, 6, 7, 8, 9],
         index=[1, 1, 2, 2, 3, 3, 4, 4, 4],
     )
-    nested = packer.view_sorted_series_as_nested_array(series)
+    nested = packer.view_sorted_series_as_list_array(series)
 
     assert_array_equal(nested.index, [1, 2, 3, 4])
 

@@ -40,8 +40,8 @@ class TsAccessor:
                     f"must be list types. Given struct has unsupported field {field}"
                 )
 
-    def to_nested(self):
-        """Convert ts into dataframe of nested arrays"""
+    def to_lists(self):
+        """Convert ts into dataframe of list-array columns"""
         return self._series.struct.explode()
 
     def to_flat(self):
