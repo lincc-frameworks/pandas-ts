@@ -1,6 +1,5 @@
 fail_fast: true
 repos:
-
     # Compare the local template version to the latest remote template version
     # This hook should always pass. It will print a message if the local version 
     # is out of date.
@@ -11,7 +10,6 @@ repos:
         name: Check template version
         description: Compare current template version against latest
         verbose: true
-
     # Clear output from jupyter notebooks so that only the input cells are committed.
   - repo: local
     hooks:
@@ -22,7 +20,6 @@ repos:
         stages: [commit]
         language: system
         entry: jupyter nbconvert --clear-output
-
     # Prevents committing directly branches named 'main' and 'master'.
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
@@ -34,7 +31,6 @@ repos:
         name: Check for large files
         description: Prevent the user from committing very large files.
         args: ['--maxkb=500']
-
     # Verify that pyproject.toml is well formed
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: v0.12.1
@@ -54,10 +50,6 @@ repos:
         name: Lint code using ruff
         # Disable ruff for notebooks since it is too strict.
         types_or: [ python, pyi ]
-
-
-
-    # Analyze type hints and report errors.
   - repo: local
     hooks:
       - id: mypy
@@ -68,12 +60,8 @@ repos:
         files: ^(src|tests)/
         args:
           [
-          
             "--ignore-missing-imports", # Ignore imports without type hints
-          
           ]
-
-
     # Run unit tests, verify that they pass. Note that coverage is run against
     # the ./src directory here because that is what will be committed. In the 
     # github workflow script, the coverage is run against the installed package

@@ -14,6 +14,7 @@ classifiers = [
     "Programming Language :: Python",
 ]
 dynamic = ["version"]
+requires-python = ">=3.9"
 dependencies = [
     # We use internal pd._libs.missing and experimental ArrowExtensionArray
     "pandas>=2.2,<2.3",
