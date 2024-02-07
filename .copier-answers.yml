@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v1.4.6-69-g9ab5459
+_commit: v1.5.0
 _src_path: gh:lincc-frameworks/python-project-template
 author_email: hombit@gmail.com
 author_name: LINCC Frameworks
@@ -8,7 +8,7 @@ custom_install: true
 enforce_style:
 - ruff
 failure_notification:
-- email
+- none
 include_benchmarks: true
 include_docs: true
 include_notebooks: true
