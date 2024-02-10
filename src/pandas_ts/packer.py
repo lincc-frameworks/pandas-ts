@@ -7,13 +7,19 @@ TODO: multi-index support
 # "|" for python 3.9
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 
+from pandas_ts.ts_dtype import TsDtype
 from pandas_ts.ts_ext_array import TsExtensionArray
 
-__all__ = ["pack_flat", "pack_lists"]
+__all__ = ["pack_flat", "pack_lists", "pack_dfs"]
+
+
+N_ROWS_INFER_DTYPE = 1000
 
 
 def pack_flat_into_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
@@ -78,6 +84,38 @@ def pack_flat(df: pd.DataFrame, name: str | None = None) -> pd.Series:
     # TODO: think about the case when the data is pre-sorted and we don't need a data copy.
     flat = df.sort_index(kind="stable")
     return pack_sorted_df_into_struct(flat, name=name)
+
+
+def pack_dfs(dfs: Sequence[pd.DataFrame], index: object = None, name: str | None = None) -> pd.Series:
+    """Pack a sequence of "flat" dataframes into a "nested" series.
+
+    Parameters
+    ----------
+    dfs : Sequence[pd.DataFrame]
+        Input sequence of dataframes.
+    index : pd.Index, optional
+        Index of the output series.
+    name : str, optional
+        Name of the output series.
+
+    Returns
+    -------
+    pd.Series
+        Output series.
+    """
+    if isinstance(dfs, pd.Series) and index is None:
+        index = dfs.index
+
+    first_df = dfs.iloc[0] if hasattr(dfs, "iloc") else dfs[0]
+
+    field_types = {
+        column: pa.array(first_df[column].iloc[:N_ROWS_INFER_DTYPE]).type for column in first_df.columns
+    }
+    dtype = TsDtype.from_fields(field_types)
+    dummy_value: dict[str, list] = {column: [] for column in first_df.columns}
+    series = pd.Series([dummy_value] * len(dfs), dtype=dtype, index=index, name=name)
+    series[:] = dfs
+    return series
 
 
 def pack_sorted_df_into_struct(df: pd.DataFrame, name: str | None = None) -> pd.Series:

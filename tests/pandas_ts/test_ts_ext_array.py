@@ -70,6 +70,202 @@ def test_series_built_from_dict():
     assert_series_equal(series, pd.Series(desired_ext_array))
 
 
+def test__convert_df_to_pa_scalar():
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]})
+    pa_scalar = TsExtensionArray._convert_df_to_pa_scalar(df, type=None)
+
+    assert pa_scalar == pa.scalar(
+        {"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]},
+        type=pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.float64()))]),
+    )
+
+
+def test__convert_df_to_pa_from_scalar():
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]})
+    pa_scalar = TsExtensionArray._convert_df_to_pa_scalar(df, type=None)
+
+    assert pa_scalar == pa.scalar(
+        {"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]},
+        type=pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.float64()))]),
+    )
+
+
+def test__convert_df_to_pa_from_series():
+    series = pd.Series(
+        [
+            pd.DataFrame({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]}),
+            pd.DataFrame({"a": [1, 2, 1], "b": [-3.0, -4.0, -5.0]}),
+        ]
+    )
+    list_of_dicts = list(TsExtensionArray._convert_df_value_to_pa(series, type=None))
+
+    desired_type = pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.float64()))])
+
+    assert list_of_dicts == [
+        pa.scalar({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]}, type=desired_type),
+        pa.scalar({"a": [1, 2, 1], "b": [-3.0, -4.0, -5.0]}, type=desired_type),
+    ]
+
+
+def test__convert_df_to_pa_from_list():
+    list_of_dfs = [
+        pd.DataFrame({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]}),
+        pd.DataFrame({"a": [1, 2, 1], "b": [-3.0, -4.0, -5.0]}),
+    ]
+    list_of_dicts = list(TsExtensionArray._convert_df_value_to_pa(list_of_dfs, type=None))
+
+    desired_type = pa.struct([pa.field("a", pa.list_(pa.int64())), pa.field("b", pa.list_(pa.float64()))])
+
+    assert list_of_dicts == [
+        pa.scalar({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]}, type=desired_type),
+        pa.scalar({"a": [1, 2, 1], "b": [-3.0, -4.0, -5.0]}, type=desired_type),
+    ]
+
+
+def test__from_sequence():
+    list_of_dfs = [
+        pd.DataFrame({"a": [1, 2, 3], "b": [-4.0, -5.0, -6.0]}),
+        pd.DataFrame({"a": [1, 2, 1], "b": [-3.0, -4.0, -5.0]}),
+    ]
+    ext_array = TsExtensionArray._from_sequence(list_of_dfs, dtype=None)
+
+    desired = TsExtensionArray(
+        pa.StructArray.from_arrays(
+            [pa.array([[1, 2, 3], [1, 2, 1]]), pa.array([[-4.0, -5.0, -6.0], [-3.0, -4.0, -5.0]])],
+            names=["a", "b"],
+        )
+    )
+    assert ext_array.equals(desired)
+
+
+def test___setitem___single_df():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([1, 2, 1])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    ext_array[0] = pd.DataFrame({"a": [5, 6, 7], "b": [100.0, 200.0, 300.0]})
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([5, 6, 7]), np.array([1, 2, 1])]),
+            pa.array([np.array([100.0, 200.0, 300.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = TsExtensionArray(desired_struct_array)
+
+    assert ext_array.equals(desired)
+
+
+def test___setitem___single_df_different_size():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([1, 2, 1])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    ext_array[0] = pd.DataFrame({"a": [5, 6], "b": [100.0, 200.0]})
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([5, 6]), np.array([1, 2, 1])]),
+            pa.array([np.array([100.0, 200.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = TsExtensionArray(desired_struct_array)
+
+    assert ext_array.equals(desired)
+
+
+def test___setitem___single_df_to_all_rows():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([1, 2, 1])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    ext_array[:] = pd.DataFrame({"a": [5, 6], "b": [100.0, 200.0]})
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([5, 6]), np.array([5, 6])]),
+            pa.array([np.array([100.0, 200.0]), np.array([100.0, 200.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = TsExtensionArray(desired_struct_array)
+
+    assert ext_array.equals(desired)
+
+
+def test___setitem___list_of_dfs():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([1, 2, 1])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    ext_array[:] = [
+        pd.DataFrame({"a": [5, 6], "b": [100.0, 200.0]}),
+        pd.DataFrame({"a": [7, 8], "b": [300.0, 400.0]}),
+    ]
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([5, 6]), np.array([7, 8])]),
+            pa.array([np.array([100.0, 200.0]), np.array([300.0, 400.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = TsExtensionArray(desired_struct_array)
+
+    assert ext_array.equals(desired)
+
+
+def test___setitem___series_of_dfs():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([1, 2, 1])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    ext_array[:] = pd.Series(
+        [
+            pd.DataFrame({"a": [5, 6], "b": [100.0, 200.0]}),
+            pd.DataFrame({"a": [7, 8], "b": [300.0, 400.0]}),
+        ]
+    )
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([5, 6]), np.array([7, 8])]),
+            pa.array([np.array([100.0, 200.0]), np.array([300.0, 400.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = TsExtensionArray(desired_struct_array)
+
+    assert ext_array.equals(desired)
+
+
 # Test exception raises for wrong dtype
 @pytest.mark.parametrize(
     "data",

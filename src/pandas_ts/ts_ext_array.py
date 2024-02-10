@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from typing import Any, cast
 
 import numpy as np
@@ -49,6 +49,37 @@ class TsExtensionArray(ArrowExtensionArray):
 
         if validate:
             self._validate(self._pa_array)
+
+    @staticmethod
+    def _convert_df_to_pa_scalar(df: pd.DataFrame, *, type: pa.DataType | None) -> pa.Scalar:
+        d = {column: series.values for column, series in df.to_dict("series").items()}
+        return pa.scalar(d, type=type)
+
+    @staticmethod
+    def _convert_df_value_to_pa(value: object, *, type: pa.DataType | None) -> object:
+        # Convert "scalar" pd.DataFrame to a dict
+        if isinstance(value, pd.DataFrame):
+            return TsExtensionArray._convert_df_to_pa_scalar(value, type=type)
+        # Convert pd.DataFrame collection to a list of dicts
+        if hasattr(value, "__getitem__") and isinstance(value, Iterable):
+            if hasattr(value, "iloc"):
+                first = value.iloc[0]
+            else:
+                try:
+                    first = value[0]  # type: ignore[index]
+                except IndexError:
+                    return value
+            if isinstance(first, pd.DataFrame):
+                return [TsExtensionArray._convert_df_to_pa_scalar(v, type=type) for v in value]
+        return value
+
+    @classmethod
+    def _from_sequence(cls, scalars, *, dtype=None, copy: bool = False) -> Self:  # type: ignore[name-defined] # noqa: F821
+        scalars = cls._convert_df_value_to_pa(scalars, type=None)
+        # The previous line may return an iterator, but parent's _from_sequence needs Sequence
+        if not isinstance(scalars, Sequence) and isinstance(scalars, Collection):
+            scalars = list(scalars)
+        return super()._from_sequence(scalars, dtype=dtype, copy=copy)
 
     @staticmethod
     def _validate(array: pa.ChunkedArray) -> None:
@@ -120,6 +151,10 @@ class TsExtensionArray(ArrowExtensionArray):
         # We do copy=False here because user's 'copy' is already handled by ArrowExtensionArray.to_numpy
         result[:] = [pd.DataFrame(value, copy=False) for value in array]
         return result
+
+    def __setitem__(self, key, value) -> None:
+        value = self._convert_df_value_to_pa(value, type=self._dtype.pyarrow_dtype)
+        super().__setitem__(key, value)
 
     @property
     def list_offsets(self) -> pa.ChunkedArray:

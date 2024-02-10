@@ -128,6 +128,52 @@ def test_pack_lists():
         assert_series_equal(series.struct.field(field_name), packed_df[field_name])
 
 
+def test_dfs():
+    dfs = [
+        pd.DataFrame(
+            data={
+                "a": [1, 2],
+                "b": [0, 1],
+            },
+            index=[100, 100],
+        ),
+        pd.DataFrame(
+            data={
+                "a": [3, 4],
+                "b": [0, 1],
+            },
+            index=[101, 101],
+        ),
+        pd.DataFrame(
+            data={
+                "a": [5, 6],
+                "b": [0, 1],
+            },
+            index=[102, 102],
+        ),
+        pd.DataFrame(
+            data={
+                "a": [7, 8, 9],
+                "b": [0, 1, 0],
+            },
+            index=[103, 103, 103],
+        ),
+    ]
+    series = packer.pack_dfs(dfs, index=[100, 101, 102, 103])
+
+    desired = pd.Series(
+        data=[
+            (np.array([1, 2]), np.array([0, 1])),
+            (np.array([3, 4]), np.array([0, 1])),
+            (np.array([5, 6]), np.array([0, 1])),
+            (np.array([7, 8, 9]), np.array([0, 1, 0])),
+        ],
+        index=[100, 101, 102, 103],
+        dtype=TsDtype.from_fields(dict(a=pa.int64(), b=pa.int64())),
+    )
+    assert_series_equal(series, desired)
+
+
 def test_view_sorted_df_as_list_arrays():
     flat_df = pd.DataFrame(
         data={
