@@ -61,12 +61,16 @@ class TsExtensionArray(ArrowExtensionArray):
         if isinstance(value, pd.DataFrame):
             return TsExtensionArray._convert_df_to_pa_scalar(value, type=type)
         # Convert pd.DataFrame collection to a list of dicts
-        if (
-            hasattr(value, "__getitem__")
-            and isinstance(value, Iterable)
-            and isinstance(value[0], pd.DataFrame)  # type: ignore[index]
-        ):
-            return [TsExtensionArray._convert_df_to_pa_scalar(v, type=type) for v in value]
+        if hasattr(value, "__getitem__") and isinstance(value, Iterable):
+            if hasattr(value, "iloc"):
+                first = value.iloc[0]
+            else:
+                try:
+                    first = value[0]  # type: ignore[index]
+                except IndexError:
+                    return value
+            if isinstance(first, pd.DataFrame):
+                return [TsExtensionArray._convert_df_to_pa_scalar(v, type=type) for v in value]
         return value
 
     @classmethod
