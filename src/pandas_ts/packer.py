@@ -19,6 +19,9 @@ from pandas_ts.ts_ext_array import TsExtensionArray
 __all__ = ["pack_flat", "pack_lists", "pack_dfs"]
 
 
+N_ROWS_INFER_DTYPE = 1000
+
+
 def pack_flat_into_df(df: pd.DataFrame, name=None) -> pd.DataFrame:
     """Pack a "flat" dataframe into a "nested" dataframe.
 
@@ -102,9 +105,14 @@ def pack_dfs(dfs: Sequence[pd.DataFrame], index: object = None, name: str | None
     """
     if isinstance(dfs, pd.Series) and index is None:
         index = dfs.index
-    field_types = {column: pa.from_numpy_dtype(dtype) for column, dtype in dfs[0].dtypes.items()}
+
+    first_df = dfs.iloc[0] if hasattr(dfs, "iloc") else dfs[0]
+
+    field_types = {
+        column: pa.array(first_df[column].iloc[:N_ROWS_INFER_DTYPE]).type for column in first_df.columns
+    }
     dtype = TsDtype.from_fields(field_types)
-    dummy_value: dict[str, list] = {column: [] for column in dfs[0].columns}
+    dummy_value: dict[str, list] = {column: [] for column in first_df.columns}
     series = pd.Series([dummy_value] * len(dfs), dtype=dtype, index=index, name=name)
     series[:] = dfs
     return series
