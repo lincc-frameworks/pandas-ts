@@ -184,10 +184,10 @@ def test_set_flat_field():
     assert_series_equal(
         series.ts["a"],
         pd.Series(
-            data=[["a", "b", "c"], ["d", "e", "f"]],
-            index=[0, 1],
+            data=["a", "b", "c", "d", "e", "f"],
+            index=[0, 0, 0, 1, 1, 1],
             name="a",
-            dtype=pd.ArrowDtype(pa.list_(pa.string())),
+            dtype=pd.ArrowDtype(pa.string()),
         ),
     )
 
@@ -207,10 +207,10 @@ def test_set_list_field():
     assert_series_equal(
         series.ts["c"],
         pd.Series(
-            data=[["a", "b", "c"], ["d", "e", "f"]],
-            index=[0, 1],
+            data=["a", "b", "c", "d", "e", "f"],
+            index=[0, 0, 0, 1, 1, 1],
             name="c",
-            dtype=pd.ArrowDtype(pa.list_(pa.string())),
+            dtype=pd.ArrowDtype(pa.string()),
         ),
     )
 
@@ -231,9 +231,9 @@ def test_pop_field():
     assert_series_equal(
         a,
         pd.Series(
-            [np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])],
-            dtype=pd.ArrowDtype(pa.list_(pa.float64())),
-            index=[0, 1],
+            [1.0, 2.0, 3.0, 1.0, 2.0, 1.0],
+            dtype=pd.ArrowDtype(pa.float64()),
+            index=[0, 0, 0, 1, 1, 1],
             name="a",
         ),
     )
@@ -293,18 +293,18 @@ def test___getitem___single_field():
     assert_series_equal(
         series.ts["a"],
         pd.Series(
-            [np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])],
-            dtype=pd.ArrowDtype(pa.list_(pa.float64())),
-            index=[0, 1],
+            np.array([1.0, 2.0, 3.0, 1.0, 2.0, 1.0]),
+            dtype=pd.ArrowDtype(pa.float64()),
+            index=[0, 0, 0, 1, 1, 1],
             name="a",
         ),
     )
     assert_series_equal(
         series.ts["b"],
         pd.Series(
-            [-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])],
-            dtype=pd.ArrowDtype(pa.list_(pa.float64())),
-            index=[0, 1],
+            -np.array([4.0, 5.0, 6.0, 3.0, 4.0, 5.0]),
+            dtype=pd.ArrowDtype(pa.float64()),
+            index=[0, 0, 0, 1, 1, 1],
             name="b",
         ),
     )
@@ -354,10 +354,10 @@ def test___setitem___with_flat():
     assert_series_equal(
         series.ts["a"],
         pd.Series(
-            data=[["a", "b", "c"], ["d", "e", "f"]],
-            index=[0, 1],
+            data=["a", "b", "c", "d", "e", "f"],
+            index=[0, 0, 0, 1, 1, 1],
             name="a",
-            dtype=pd.ArrowDtype(pa.list_(pa.string())),
+            dtype=pd.ArrowDtype(pa.string()),
         ),
     )
 
@@ -377,10 +377,10 @@ def test___setitem___with_list():
     assert_series_equal(
         series.ts["c"],
         pd.Series(
-            data=[["a", "b", "c"], ["d", "e", "f"]],
-            index=[0, 1],
+            data=["a", "b", "c", "d", "e", "f"],
+            index=[0, 0, 0, 1, 1, 1],
             name="c",
-            dtype=pd.ArrowDtype(pa.list_(pa.string())),
+            dtype=pd.ArrowDtype(pa.string()),
         ),
     )
 

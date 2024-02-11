@@ -167,11 +167,15 @@ class TsAccessor(MutableMapping):
         if isinstance(key, list):
             new_array = self._series.array.view_fields(key)
             return pd.Series(new_array, index=self._series.index, name=self._series.name)
-        return self._series.struct.field(key)
+
+        series = self._series.struct.field(key).list.flatten()
+        series.index = np.repeat(self._series.index.values, np.diff(self._series.array.list_offsets))
+        series.name = key
+        return series
 
     def __setitem__(self, key: str, value: ArrayLike) -> None:
         # TODO: we can be much-much smarter about the performance here
-        # TODO: think better about underlying pa.ChunkArray
+        # TODO: think better about underlying pa.ChunkArray in both self._series.array and value
 
         # Everything is empty, do nothing
         if len(self._series) == 0 and np.ndim(value) != 0:
