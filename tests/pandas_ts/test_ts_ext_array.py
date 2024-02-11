@@ -552,7 +552,7 @@ def test_set_list_field_replace_field():
     assert_series_equal(pd.Series(ext_array), pd.Series(desired))
 
 
-def test_delete_field():
+def test_pop_field():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0, 2.0])]),
@@ -563,7 +563,7 @@ def test_delete_field():
     )
     ext_array = TsExtensionArray(struct_array)
 
-    ext_array.delete_field("c")
+    ext_array.pop_field("c")
 
     desired_struct_array = pa.StructArray.from_arrays(
         arrays=[
@@ -588,11 +588,11 @@ def test_delete_last_field_raises():
     )
     ext_array = TsExtensionArray(struct_array)
 
-    ext_array.delete_field("a")
+    ext_array.pop_field("a")
     assert ext_array.field_names == ["b", "c"]
 
-    ext_array.delete_field("c")
+    ext_array.pop_field("c")
     assert ext_array.field_names == ["b"]
 
     with pytest.raises(ValueError):
-        ext_array.delete_field("b")
+        ext_array.pop_field("b")
