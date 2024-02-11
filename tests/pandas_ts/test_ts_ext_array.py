@@ -377,6 +377,83 @@ def test_flat_length():
     assert ext_array.flat_length == 7
 
 
+def test_view_fields_with_single_field():
+    arrays = [
+        pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0, 2.0])]),
+        pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0, 6.0])]),
+    ]
+    ext_array = TsExtensionArray(
+        pa.StructArray.from_arrays(
+            arrays=arrays,
+            names=["a", "b"],
+        )
+    )
+
+    view = ext_array.view_fields("a")
+    assert view.field_names == ["a"]
+
+    desired = TsExtensionArray(
+        pa.StructArray.from_arrays(
+            arrays=arrays[:1],
+            names=["a"],
+        )
+    )
+
+    assert_series_equal(pd.Series(view), pd.Series(desired))
+
+
+def test_view_fields_with_multiple_fields():
+    arrays = [
+        pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0, 4.0])]),
+        pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0, 6.0])]),
+        pa.array([["x", "y", "z"], ["x1", "x2", "x3", "x4"]]),
+    ]
+    ext_array = TsExtensionArray(
+        pa.StructArray.from_arrays(
+            arrays=arrays,
+            names=["a", "b", "c"],
+        )
+    )
+
+    view = ext_array.view_fields(["b", "a"])
+    assert view.field_names == ["b", "a"]
+
+    assert_series_equal(
+        pd.Series(view),
+        pd.Series(
+            TsExtensionArray(pa.StructArray.from_arrays(arrays=[arrays[1], arrays[0]], names=["b", "a"]))
+        ),
+    )
+
+
+def test_view_fields_raises_for_invalid_field():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0, 4.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0, 6.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    with pytest.raises(ValueError):
+        ext_array.view_fields("c")
+
+
+def test_view_fields_raises_for_non_unique_fields():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0, 4.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0, 6.0])]),
+        ],
+        names=["a", "b"],
+    )
+    ext_array = TsExtensionArray(struct_array)
+
+    with pytest.raises(ValueError):
+        ext_array.view_fields(["a", "a"])
+
+
 def test_set_flat_field_new_field_scalar():
     struct_array = pa.StructArray.from_arrays(
         arrays=[

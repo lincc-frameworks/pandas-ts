@@ -140,7 +140,10 @@ class TsAccessor(MutableMapping):
         self._series.array.delete_field(field)
         return series
 
-    def __getitem__(self, key: str) -> pd.Series:
+    def __getitem__(self, key: str | list[str]) -> pd.Series:
+        if isinstance(key, list):
+            new_array = self._series.array.view_fields(key)
+            return pd.Series(new_array, index=self._series.index, name=self._series.name)
         return self._series.struct.field(key)
 
     def __setitem__(self, key: str, value: ArrayLike) -> None:
