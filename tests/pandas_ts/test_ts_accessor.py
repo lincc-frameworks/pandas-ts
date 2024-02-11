@@ -215,7 +215,7 @@ def test_set_list_field():
     )
 
 
-def test_delete_field():
+def test_pop_field():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -225,7 +225,7 @@ def test_delete_field():
     )
     series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[0, 1])
 
-    a = series.ts.delete_field("a")
+    a = series.ts.pop_field("a")
 
     assert_array_equal(series.ts.fields, ["b"])
     assert_series_equal(

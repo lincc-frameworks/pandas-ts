@@ -123,7 +123,7 @@ class TsAccessor(MutableMapping):
 
     # I intentionally don't call it `drop` or `drop_field` because `pd.DataFrame.drop` is not inplace
     # by default, and I wouldn't like to surprise the user.
-    def delete_field(self, field: str) -> pd.Series:
+    def pop_field(self, field: str) -> pd.Series:
         """Delete the field from the struct and return it.
 
         Parameters
@@ -137,7 +137,7 @@ class TsAccessor(MutableMapping):
             The deleted field.
         """
         series = self[field]
-        self._series.array.delete_field(field)
+        self._series.array.pop_field(field)
         return series
 
     def __getitem__(self, key: str | list[str]) -> pd.Series:
@@ -187,7 +187,7 @@ class TsAccessor(MutableMapping):
         )
 
     def __delitem__(self, key: str) -> None:
-        self.delete_field(key)
+        self.pop_field(key)
 
     def __iter__(self) -> Generator[str, None, None]:
         yield from iter(self._series.struct.dtypes.index)

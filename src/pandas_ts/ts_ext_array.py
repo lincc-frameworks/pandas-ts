@@ -274,7 +274,7 @@ class TsExtensionArray(ArrowExtensionArray):
 
         self._replace_pa_array(pa_array, validate=True)
 
-    def delete_field(self, field: str):
+    def pop_field(self, field: str):
         """Delete a field from the struct array
 
         Parameters
