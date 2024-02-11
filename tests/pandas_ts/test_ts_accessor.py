@@ -280,6 +280,29 @@ def test_query_flat_2():
     assert_series_equal(filtered, desired)
 
 
+def test_get_list_series():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])]),
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[5, 7])
+
+    lists = series.ts.get_list_series("a")
+
+    assert_series_equal(
+        lists,
+        pd.Series(
+            data=[np.array([1, 2, 3]), np.array([4, 5, 6])],
+            dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            index=[5, 7],
+            name="a",
+        ),
+    )
+
+
 def test___getitem___single_field():
     struct_array = pa.StructArray.from_arrays(
         arrays=[

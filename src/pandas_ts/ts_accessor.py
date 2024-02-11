@@ -163,6 +163,21 @@ class TsAccessor(MutableMapping):
             return pd.Series([], dtype=self._series.dtype)
         return pack_sorted_df_into_struct(flat)
 
+    def get_list_series(self, field: str) -> pd.Series:
+        """Get the list-array field as a Series
+
+        Parameters
+        ----------
+        field : str
+            Name of the field to get.
+
+        Returns
+        -------
+        pd.Series
+            The list-array field.
+        """
+        return self._series.struct.field(field)
+
     def __getitem__(self, key: str | list[str]) -> pd.Series:
         if isinstance(key, list):
             new_array = self._series.array.view_fields(key)
