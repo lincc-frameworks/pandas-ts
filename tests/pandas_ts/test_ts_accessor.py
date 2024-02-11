@@ -263,6 +263,23 @@ def test_query_flat_1():
     assert_series_equal(filtered, desired)
 
 
+# Currently we remove empty rows from the output series
+def test_query_flat_2():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]),
+            pa.array([np.array([6.0, 4.0, 2.0]), np.array([1.0, 2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[5, 7])
+
+    filtered = series.ts.query_flat("a > 1000.0")
+    desired = pd.Series([], dtype=series.dtype)
+
+    assert_series_equal(filtered, desired)
+
+
 def test___getitem___single_field():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
