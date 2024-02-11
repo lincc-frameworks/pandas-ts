@@ -1,3 +1,6 @@
+# Python 3.9 doesn't support "|" for types
+from __future__ import annotations
+
 from collections.abc import Generator, MutableMapping
 from typing import cast
 
@@ -32,13 +35,38 @@ class TsAccessor(MutableMapping):
         if not isinstance(dtype, TsDtype):
             raise AttributeError(f"Can only use .ts accessor with a Series of TsDtype, got {dtype}")
 
-    def to_lists(self) -> pd.DataFrame:
-        """Convert ts into dataframe of list-array columns"""
-        return self._series.struct.explode()
+    def to_lists(self, fields: list[str] | None = None) -> pd.DataFrame:
+        """Convert ts into dataframe of list-array columns
 
-    def to_flat(self) -> pd.DataFrame:
-        """Convert ts into dataframe of flat arrays"""
-        fields = self._series.struct.dtypes.index
+        Parameters
+        ----------
+        fields : list[str] or None, optional
+            Names of the fields to include. Default is None, which means all fields.
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe of list-arrays.
+        """
+        df = self._series.struct.explode()
+        if fields is None:
+            return df
+        return df[fields]
+
+    def to_flat(self, fields: list[str] | None = None) -> pd.DataFrame:
+        """Convert ts into dataframe of flat arrays
+
+        Parameters
+        ----------
+        fields : list[str] or None, optional
+            Names of the fields to include. Default is None, which means all fields.
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe of flat arrays.
+        """
+        fields = fields if fields is not None else list(self._series.struct.dtypes.index)
         if len(fields) == 0:
             raise ValueError("Cannot flatten a struct with no fields")
 

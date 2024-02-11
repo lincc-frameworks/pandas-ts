@@ -52,6 +52,30 @@ def test_ts_accessor_to_lists():
     assert_frame_equal(lists, desired)
 
 
+def test_ts_accessor_to_lists_with_fields():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
+            pa.array([np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[0, 1])
+
+    lists = series.ts.to_lists(fields=["a"])
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])],
+                dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+                index=[0, 1],
+            ),
+        },
+    )
+    assert_frame_equal(lists, desired)
+
+
 def test_ts_accessor_to_flat():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
@@ -76,6 +100,36 @@ def test_ts_accessor_to_flat():
                 data=[-4.0, -5.0, -6.0, -3.0, -4.0, -5.0],
                 index=[0, 0, 0, 1, 1, 1],
                 name="b",
+                copy=False,
+            ),
+        },
+    )
+
+    assert_array_equal(flat.dtypes, desired.dtypes)
+    assert_array_equal(flat.index, desired.index)
+
+    for column in flat.columns:
+        assert_array_equal(flat[column], desired[column])
+
+
+def test_to_flat_with_fields():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[0, 1])
+
+    flat = series.ts.to_flat(fields=["a"])
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[1.0, 2.0, 3.0, 1.0, 2.0, 1.0],
+                index=[0, 0, 0, 1, 1, 1],
+                name="a",
                 copy=False,
             ),
         },
