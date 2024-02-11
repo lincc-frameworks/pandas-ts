@@ -1,3 +1,4 @@
+# typing.Self and "|" union syntax don't exist in Python 3.9
 from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Iterator, Sequence
@@ -179,6 +180,38 @@ class TsExtensionArray(ArrowExtensionArray):
     def flat_length(self) -> int:
         """Length of the flat arrays"""
         return sum(chunk.field(0).value_lengths().sum().as_py() for chunk in self._pa_array.iterchunks())
+
+    def view_fields(self, fields: str | list[str]) -> Self:  # type: ignore[name-defined] # noqa: F821
+        """Get a view of the series with only the specified fields
+
+        Parameters
+        ----------
+        fields : str or list of str
+            The name of the field or a list of names of the fields to include.
+
+        Returns
+        -------
+        TsExtensionArray
+            The view of the series with only the specified fields.
+        """
+        if isinstance(fields, str):
+            fields = [fields]
+        if len(set(fields)) != len(fields):
+            raise ValueError("Duplicate field names are not allowed")
+        if not set(fields).issubset(self.field_names):
+            raise ValueError(f"Some fields are not found, given: {fields}, available: {self.field_names}")
+
+        chunks = []
+        for chunk in self._pa_array.iterchunks():
+            chunk = cast(pa.StructArray, chunk)
+            struct_dict = {}
+            for field in fields:
+                struct_dict[field] = chunk.field(field)
+            struct_array = pa.StructArray.from_arrays(struct_dict.values(), struct_dict.keys())
+            chunks.append(struct_array)
+        pa_array = pa.chunked_array(chunks)
+
+        return self.__class__(pa_array, validate=False)
 
     def set_flat_field(self, field: str, value: ArrayLike) -> None:
         """Set the field from flat-array of values
