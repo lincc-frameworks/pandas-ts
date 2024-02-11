@@ -163,15 +163,34 @@ class TsAccessor(MutableMapping):
             return pd.Series([], dtype=self._series.dtype)
         return pack_sorted_df_into_struct(flat)
 
+    def get_list_series(self, field: str) -> pd.Series:
+        """Get the list-array field as a Series
+
+        Parameters
+        ----------
+        field : str
+            Name of the field to get.
+
+        Returns
+        -------
+        pd.Series
+            The list-array field.
+        """
+        return self._series.struct.field(field)
+
     def __getitem__(self, key: str | list[str]) -> pd.Series:
         if isinstance(key, list):
             new_array = self._series.array.view_fields(key)
             return pd.Series(new_array, index=self._series.index, name=self._series.name)
-        return self._series.struct.field(key)
+
+        series = self._series.struct.field(key).list.flatten()
+        series.index = np.repeat(self._series.index.values, np.diff(self._series.array.list_offsets))
+        series.name = key
+        return series
 
     def __setitem__(self, key: str, value: ArrayLike) -> None:
         # TODO: we can be much-much smarter about the performance here
-        # TODO: think better about underlying pa.ChunkArray
+        # TODO: think better about underlying pa.ChunkArray in both self._series.array and value
 
         # Everything is empty, do nothing
         if len(self._series) == 0 and np.ndim(value) != 0:
