@@ -10,6 +10,7 @@ import pyarrow as pa
 from numpy.typing import ArrayLike
 from pandas.api.extensions import register_series_accessor
 
+from pandas_ts.packer import pack_sorted_df_into_struct
 from pandas_ts.ts_dtype import TsDtype
 
 __all__ = ["TsAccessor"]
@@ -139,6 +140,24 @@ class TsAccessor(MutableMapping):
         series = self[field]
         self._series.array.delete_field(field)
         return series
+
+    def query_flat(self, query: str) -> pd.Series:
+        """Query the flat arrays with a boolean expression
+
+        Currently, it will remove empty rows from the output series.
+        # TODO: preserve the index keeping empty rows
+
+        Parameters
+        ----------
+        query : str
+            Boolean expression to filter the rows.
+
+        Returns
+        -------
+        pd.Series
+            The filtered series.
+        """
+        return pack_sorted_df_into_struct(self.to_flat().query(query))
 
     def __getitem__(self, key: str | list[str]) -> pd.Series:
         if isinstance(key, list):
