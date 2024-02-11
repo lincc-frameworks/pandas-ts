@@ -10,6 +10,7 @@ import pyarrow as pa
 from numpy.typing import ArrayLike
 from pandas.api.extensions import register_series_accessor
 
+from pandas_ts.packer import pack_sorted_df_into_struct
 from pandas_ts.ts_dtype import TsDtype
 
 __all__ = ["TsAccessor"]
@@ -66,7 +67,8 @@ class TsAccessor(MutableMapping):
         pd.DataFrame
             Dataframe of flat arrays.
         """
-        fields = fields if fields is not None else list(self._series.struct.dtypes.index)
+        # For some reason, .struct.dtypes is cached, so we will use TsExtensionArray directly
+        fields = fields if fields is not None else list(self._series.array.field_names)
         if len(fields) == 0:
             raise ValueError("Cannot flatten a struct with no fields")
 
@@ -140,6 +142,27 @@ class TsAccessor(MutableMapping):
         self._series.array.delete_field(field)
         return series
 
+    def query_flat(self, query: str) -> pd.Series:
+        """Query the flat arrays with a boolean expression
+
+        Currently, it will remove empty rows from the output series.
+        # TODO: preserve the index keeping empty rows
+
+        Parameters
+        ----------
+        query : str
+            Boolean expression to filter the rows.
+
+        Returns
+        -------
+        pd.Series
+            The filtered series.
+        """
+        flat = self.to_flat().query(query)
+        if len(flat) == 0:
+            return pd.Series([], dtype=self._series.dtype)
+        return pack_sorted_df_into_struct(flat)
+
     def __getitem__(self, key: str | list[str]) -> pd.Series:
         if isinstance(key, list):
             new_array = self._series.array.view_fields(key)
@@ -190,7 +213,9 @@ class TsAccessor(MutableMapping):
         self.delete_field(key)
 
     def __iter__(self) -> Generator[str, None, None]:
-        yield from iter(self._series.struct.dtypes.index)
+        # For some reason, .struct.dtypes is cached, so we will use TsExtensionArray directly
+        yield from iter(self._series.array.field_names)
 
     def __len__(self) -> int:
-        return len(self._series.struct.dtypes)
+        # For some reason, .struct.dtypes is cached, so we will use TsExtensionArray directly
+        return len(self._series.array.field_names)

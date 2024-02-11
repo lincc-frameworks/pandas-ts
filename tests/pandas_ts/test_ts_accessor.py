@@ -11,7 +11,7 @@ from pandas_ts import TsDtype
 from pandas_ts.ts_ext_array import TsExtensionArray
 
 
-def test_ts_accessor_registered():
+def test_registered():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1, 2, 3]), np.array([1.0, 2.0, 1.0])]),
@@ -24,7 +24,7 @@ def test_ts_accessor_registered():
     _accessor = series.ts
 
 
-def test_ts_accessor_to_lists():
+def test_to_lists():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
@@ -53,7 +53,7 @@ def test_ts_accessor_to_lists():
     assert_frame_equal(lists, desired)
 
 
-def test_ts_accessor_to_lists_with_fields():
+def test_to_lists_with_fields():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
@@ -77,7 +77,7 @@ def test_ts_accessor_to_lists_with_fields():
     assert_frame_equal(lists, desired)
 
 
-def test_ts_accessor_to_flat():
+def test_to_flat():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -143,7 +143,7 @@ def test_to_flat_with_fields():
         assert_array_equal(flat[column], desired[column])
 
 
-def test_ts_accessor_fields():
+def test_fields():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -156,7 +156,7 @@ def test_ts_accessor_fields():
     assert_array_equal(series.ts.fields, ["a", "b"])
 
 
-def test_ts_accessor_flat_length():
+def test_flat_length():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -239,7 +239,48 @@ def test_delete_field():
     )
 
 
-def test_ts_accessor___getitem___single_field():
+def test_query_flat_1():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]),
+            pa.array([np.array([6.0, 4.0, 2.0]), np.array([1.0, 2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[5, 7])
+
+    filtered = series.ts.query_flat("a + b >= 7.0")
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0]), np.array([5.0, 6.0])]),
+            pa.array([np.array([6.0]), np.array([2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = pd.Series(desired_struct_array, dtype=TsDtype(desired_struct_array.type), index=[5, 7])
+
+    assert_series_equal(filtered, desired)
+
+
+# Currently we remove empty rows from the output series
+def test_query_flat_2():
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]),
+            pa.array([np.array([6.0, 4.0, 2.0]), np.array([1.0, 2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=TsDtype(struct_array.type), index=[5, 7])
+
+    filtered = series.ts.query_flat("a > 1000.0")
+    desired = pd.Series([], dtype=series.dtype)
+
+    assert_series_equal(filtered, desired)
+
+
+def test___getitem___single_field():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -269,7 +310,7 @@ def test_ts_accessor___getitem___single_field():
     )
 
 
-def test_ts_accessor___getitem___multiple_fields():
+def test___getitem___multiple_fields():
     arrays = [
         pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
         pa.array([np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
@@ -298,7 +339,7 @@ def test_ts_accessor___getitem___multiple_fields():
     )
 
 
-def test_ts_accessor___setitem___with_flat():
+def test___setitem___with_flat():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -321,7 +362,7 @@ def test_ts_accessor___setitem___with_flat():
     )
 
 
-def test_ts_accessor___setitem___with_list():
+def test___setitem___with_list():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -344,7 +385,7 @@ def test_ts_accessor___setitem___with_list():
     )
 
 
-def test_ts_accessor___setited___raises_for_ambiguous_lengths_1():
+def test___setited___raises_for_ambiguous_lengths_1():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array(
@@ -367,7 +408,7 @@ def test_ts_accessor___setited___raises_for_ambiguous_lengths_1():
         series.ts["c"] = ["a", "b", "c"]
 
 
-def test_ts_accessor___setited___raises_for_ambiguous_lengths_2():
+def test___setited___raises_for_ambiguous_lengths_2():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0]), np.array([])]),
@@ -381,7 +422,7 @@ def test_ts_accessor___setited___raises_for_ambiguous_lengths_2():
         series.ts["c"] = ["a", "b", "c"]
 
 
-def test_ts_accessor___delitem__():
+def test___delitem__():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -396,7 +437,7 @@ def test_ts_accessor___delitem__():
     assert_array_equal(series.ts.fields, ["b"])
 
 
-def test_ts_accessor___iter__():
+def test___iter__():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
@@ -409,7 +450,7 @@ def test_ts_accessor___iter__():
     assert_array_equal(list(series.ts), ["a", "b"])
 
 
-def test_ts_accessor___len__():
+def test___len__():
     struct_array = pa.StructArray.from_arrays(
         arrays=[
             pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
