@@ -1,6 +1,33 @@
 # pandas-ts
 
-### WIP exploratory repository for nested array representation of time series data
+## WIP exploratory repository for nested array representation of time series data
+
+## Potential features
+
+### Easy to implement
+
+-  Replace `pack_dfs()`, `pack_lists()`, `pack_flat()` with a single function
+- Zero-copy nesting of dataframes having pre-grouped index
+- Reading parquet
+- Reading CSV (textual formats)
+- `.ts["field_name"] +=`, `/=`, etc
+- Multiindex support
+- String representation of a nested item (nested dataframe)
+
+### Doable, but a lot of work
+
+- Unpin pandas version. Currently we build on pandas `ArrowExtensionArray`, which is marked experimental. It would also improve performance.
+- **Non-arrow types.** We actually can reimplement everything without pyarrow and nested arrays
+
+### Tricky or impossible to implement
+
+- **Performant dataframe representation of items as `pd.DataFrame`.** Currently it is ~10x-200x overhead versus `pyarrow`'s convertion to Python `dict`, ~20-50 μs per item.
+- `df.eval()`, `df.query()` for dataframe with mixed "scalar" and "nested" columns.
+
+### Scope is not clear
+
+- Dask Dataframe integration
+- Single series element assigment from dataframe doesn't wotk right now: `pd.Series.iloc[i] = pd.DataFrame(...)`
 
 [![Template](https://img.shields.io/badge/Template-LINCC%20Frameworks%20Python%20Project%20Template-brightgreen)](https://lincc-ppt.readthedocs.io/en/latest/)
 
